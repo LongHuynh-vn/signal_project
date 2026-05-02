@@ -4,10 +4,22 @@ import java.util.Random;
 
 import com.cardio_generator.outputs.OutputStrategy;
 
+/**
+ * Generates simulated blood oxygen saturation measurements for patients.
+ * Values begin near a healthy baseline and are then varied slightly while
+ * remaining within a realistic range.
+ */
 public class BloodSaturationDataGenerator implements PatientDataGenerator {
     private static final Random random = new Random();
-    private int[] lastSaturationValues;
+    private final int[] lastSaturationValues;
 
+    /**
+     * Creates a saturation generator and initializes a starting value for each
+     * patient.
+     *
+     * @param patientCount total number of simulated patients; valid patient IDs are
+     *                     expected in the range 1..patientCount
+     */
     public BloodSaturationDataGenerator(int patientCount) {
         lastSaturationValues = new int[patientCount + 1];
 
@@ -17,6 +29,14 @@ public class BloodSaturationDataGenerator implements PatientDataGenerator {
         }
     }
 
+    /**
+     * Generates the next blood saturation measurement for a patient and forwards it
+     * to the configured output strategy.
+     *
+     * @param patientId identifier of the patient receiving the generated reading
+     * @param outputStrategy destination that receives the generated saturation
+     *                       value
+     */
     @Override
     public void generate(int patientId, OutputStrategy outputStrategy) {
         try {
@@ -29,9 +49,9 @@ public class BloodSaturationDataGenerator implements PatientDataGenerator {
             lastSaturationValues[patientId] = newSaturationValue;
             outputStrategy.output(patientId, System.currentTimeMillis(), "Saturation",
                     Double.toString(newSaturationValue) + "%");
-        } catch (Exception e) {
+        } catch (RuntimeException exception) {
             System.err.println("An error occurred while generating blood saturation data for patient " + patientId);
-            e.printStackTrace(); // This will print the stack trace to help identify where the error occurred.
+            System.err.println(exception.getMessage());
         }
     }
 }

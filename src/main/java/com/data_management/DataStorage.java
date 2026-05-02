@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.io.IOException;
+
+import com.alerts.Alert;
 import com.alerts.AlertGenerator;
 
 /**
@@ -83,13 +86,19 @@ public class DataStorage {
      * @param args command line arguments
      */
     public static void main(String[] args) {
-        // DataReader is not defined in this scope, should be initialized appropriately.
-        // DataReader reader = new SomeDataReaderImplementation("path/to/data");
         DataStorage storage = new DataStorage();
 
-        // Assuming the reader has been properly initialized and can read data into the
-        // storage
-        // reader.readData(storage);
+        if (args.length > 0) {
+            try {
+                DataReader reader = new FileDataReader(args[0]);
+                reader.readData(storage);
+            } catch (IOException exception) {
+                System.err.println("Unable to read patient data: " + exception.getMessage());
+                return;
+            }
+        } else {
+            System.out.println("No data directory provided. Running with empty storage.");
+        }
 
         // Example of using DataStorage to retrieve and print records for a patient
         List<PatientRecord> records = storage.getRecords(1, 1700000000000L, 1800000000000L);
@@ -103,9 +112,10 @@ public class DataStorage {
         // Initialize the AlertGenerator with the storage
         AlertGenerator alertGenerator = new AlertGenerator(storage);
 
-        // Evaluate all patients' data to check for conditions that may trigger alerts
-        for (Patient patient : storage.getAllPatients()) {
-            alertGenerator.evaluateData(patient);
+        alertGenerator.evaluateAllPatients();
+
+        for (Alert alert : alertGenerator.getAlerts()) {
+            System.out.println(alert);
         }
     }
 }

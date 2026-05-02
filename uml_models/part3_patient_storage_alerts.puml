@@ -1,0 +1,76 @@
+@startuml Part3PatientStorageAlerts
+!pragma layout smetana
+title Part 3 Patient Storage and Alert Implementation
+skinparam classAttributeIconSize 0
+
+class Main {
+  +main(args: String[]): void
+}
+
+class DataStorage {
+  -patientMap: Map<Integer, Patient>
+  +addPatientData(patientId: int, measurementValue: double, recordType: String, timestamp: long): void
+  +getRecords(patientId: int, startTime: long, endTime: long): List<PatientRecord>
+  +getAllPatients(): List<Patient>
+  +main(args: String[]): void
+}
+
+interface DataReader {
+  +readData(dataStorage: DataStorage): void
+}
+
+class FileDataReader {
+  -directory: Path
+  +FileDataReader(directoryPath: String)
+  +FileDataReader(directory: Path)
+  +readData(dataStorage: DataStorage): void
+}
+
+class Patient {
+  -patientId: int
+  -patientRecords: List<PatientRecord>
+  +getPatientId(): int
+  +addRecord(measurementValue: double, recordType: String, timestamp: long): void
+  +getRecords(startTime: long, endTime: long): List<PatientRecord>
+}
+
+class PatientRecord {
+  -patientId: int
+  -recordType: String
+  -measurementValue: double
+  -timestamp: long
+  +getPatientId(): int
+  +getRecordType(): String
+  +getMeasurementValue(): double
+  +getTimestamp(): long
+}
+
+class AlertGenerator {
+  -dataStorage: DataStorage
+  -triggeredAlerts: List<Alert>
+  +evaluateAllPatients(): void
+  +evaluateData(patient: Patient): void
+  +getAlerts(): List<Alert>
+  +clearAlerts(): void
+}
+
+class Alert {
+  -patientId: String
+  -condition: String
+  -timestamp: long
+  +getPatientId(): String
+  +getCondition(): String
+  +getTimestamp(): long
+}
+
+Main ..> DataStorage : runs
+DataStorage "1" *-- "0..*" Patient : stores
+Patient "1" *-- "0..*" PatientRecord : owns
+FileDataReader ..|> DataReader
+FileDataReader "1" --> "1" DataStorage : imports records
+DataStorage "1" --> "1" AlertGenerator : evaluates
+AlertGenerator "1" --> "1" DataStorage : reads patients
+AlertGenerator "1" --> "0..*" PatientRecord : scans
+AlertGenerator "1" *-- "0..*" Alert : stores generated alerts
+
+@enduml

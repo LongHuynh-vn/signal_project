@@ -1,0 +1,74 @@
+@startuml PatientIdentificationSystem
+!pragma layout smetana
+title Patient Identification System
+skinparam classAttributeIconSize 0
+
+class PatientIdentifier {
+  -registry: PatientRegistry
+  +match(incomingData: IncomingPatientData): IdentityMatchResult
+  +validateSimulatorId(simulatorPatientId: String): boolean
+}
+
+class HospitalPatient {
+  -hospitalPatientId: String
+  -simulatorPatientId: String
+  -name: String
+  -dateOfBirth: String
+  -medicalHistorySummary: String
+  +getHospitalPatientId(): String
+  +getSimulatorPatientId(): String
+}
+
+class IdentityManager {
+  -identifier: PatientIdentifier
+  -accessController: AccessController
+  +resolvePatient(incomingData: IncomingPatientData): HospitalPatient
+  +handleMismatch(result: IdentityMatchResult): AnomalyReport
+}
+
+class PatientRegistry {
+  -patientsBySimulatorId: Map<String, HospitalPatient>
+  +findBySimulatorId(simulatorPatientId: String): HospitalPatient
+  +registerPatient(patient: HospitalPatient): void
+}
+
+class IncomingPatientData {
+  -simulatorPatientId: String
+  -measurementType: String
+  -timestamp: long
+  +getSimulatorPatientId(): String
+}
+
+class IdentityMatchResult {
+  -matched: boolean
+  -reason: String
+  -patient: HospitalPatient
+  +isMatched(): boolean
+  +getPatient(): HospitalPatient
+}
+
+class AnomalyReport {
+  -reportId: String
+  -simulatorPatientId: String
+  -reason: String
+  -timestamp: long
+  +markReviewed(reviewerId: String): void
+}
+
+class AccessController {
+  -rolePermissions: Map<String, List<String>>
+  +canViewIdentity(actorId: String): boolean
+  +canRegisterPatient(actorId: String): boolean
+}
+
+IdentityManager "1" *-- "1" PatientIdentifier : oversees
+IdentityManager "1" --> "1" AccessController : checks access
+IdentityManager "1" --> "0..*" AnomalyReport : creates
+PatientIdentifier "1" --> "1" PatientRegistry : searches
+PatientRegistry "1" o-- "0..*" HospitalPatient : contains
+PatientIdentifier "1" --> "1" IdentityMatchResult : returns
+IdentityMatchResult "0..*" --> "0..1" HospitalPatient : matched patient
+IncomingPatientData "0..*" --> "1" PatientIdentifier : submitted to
+AnomalyReport "0..*" --> "1" IncomingPatientData : documents
+
+@enduml

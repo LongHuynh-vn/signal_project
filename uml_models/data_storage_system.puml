@@ -1,0 +1,75 @@
+@startuml DataStorageSystem
+!pragma layout smetana
+title Data Storage System
+skinparam classAttributeIconSize 0
+
+interface DataStorage {
+  +store(data: PatientData, actorId: String): void
+  +retrieve(patientId: String, startTime: long, endTime: long, actorId: String): List<PatientData>
+  +deleteExpired(currentTime: long): int
+}
+
+class SecureDataStorage {
+  -records: Map<String, List<PatientData>>
+  -accessController: AccessController
+  -retentionPolicy: RetentionPolicy
+  -auditLog: AuditLog
+  +store(data: PatientData, actorId: String): void
+  +retrieve(patientId: String, startTime: long, endTime: long, actorId: String): List<PatientData>
+  +deleteExpired(currentTime: long): int
+}
+
+class PatientData {
+  -recordId: String
+  -patientId: String
+  -measurementType: String
+  -measurementValue: double
+  -timestamp: long
+  -version: int
+  +getPatientId(): String
+  +getTimestamp(): long
+}
+
+class DataRetriever {
+  -storage: DataStorage
+  -accessController: AccessController
+  +queryByPatient(patientId: String, startTime: long, endTime: long, requester: MedicalStaff): List<PatientData>
+  +queryLatest(patientId: String, requester: MedicalStaff): PatientData
+}
+
+class AccessController {
+  -rolePermissions: Map<String, List<String>>
+  +canRead(actorId: String, patientId: String): boolean
+  +canWrite(actorId: String): boolean
+}
+
+class RetentionPolicy {
+  -retentionDays: int
+  +isExpired(data: PatientData, currentTime: long): boolean
+  +getRetentionDays(): int
+}
+
+class AuditLog {
+  -events: List<String>
+  +recordAccess(actorId: String, patientId: String, action: String): void
+  +recordDeletion(recordId: String): void
+}
+
+class MedicalStaff {
+  -staffId: String
+  -role: String
+  +requestData(patientId: String): void
+}
+
+SecureDataStorage ..|> DataStorage
+SecureDataStorage "1" *-- "0..*" PatientData : stores
+SecureDataStorage "1" --> "1" AccessController : authorizes
+SecureDataStorage "1" --> "1" RetentionPolicy : applies
+SecureDataStorage "1" --> "1" AuditLog : records
+DataRetriever "1" --> "1" DataStorage : queries
+DataRetriever "1" --> "1" AccessController : checks
+DataRetriever "1" --> "0..*" PatientData : returns
+MedicalStaff "0..*" --> "1" DataRetriever : requests
+RetentionPolicy "1" ..> "0..*" PatientData : evaluates
+
+@enduml

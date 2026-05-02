@@ -1,0 +1,69 @@
+@startuml DataAccessLayer
+!pragma layout smetana
+title Data Access Layer
+skinparam classAttributeIconSize 0
+
+interface DataListener {
+  +start(): void
+  +stop(): void
+  +onRawMessage(rawMessage: String): void
+}
+
+class TCPDataListener {
+  -host: String
+  -port: int
+  +start(): void
+  +stop(): void
+  +onRawMessage(rawMessage: String): void
+}
+
+class WebSocketDataListener {
+  -endpointUrl: String
+  +start(): void
+  +stop(): void
+  +onRawMessage(rawMessage: String): void
+}
+
+class FileDataListener {
+  -directoryPath: String
+  +start(): void
+  +stop(): void
+  +onRawMessage(rawMessage: String): void
+}
+
+class DataParser {
+  -supportedFormats: List<String>
+  +parse(rawMessage: String): ParsedPatientData
+  +detectFormat(rawMessage: String): String
+}
+
+class ParsedPatientData {
+  -patientId: String
+  -timestamp: long
+  -label: String
+  -value: String
+  +getPatientId(): String
+  +getTimestamp(): long
+}
+
+class DataSourceAdapter {
+  -parser: DataParser
+  -storage: DataStorage
+  +accept(rawMessage: String): void
+  +forward(data: ParsedPatientData): void
+}
+
+class DataStorage {
+  +store(data: ParsedPatientData): void
+}
+
+TCPDataListener ..|> DataListener
+WebSocketDataListener ..|> DataListener
+FileDataListener ..|> DataListener
+DataListener "1" --> "1" DataSourceAdapter : forwards raw input
+DataSourceAdapter "1" --> "1" DataParser : parses
+DataParser "1" --> "0..*" ParsedPatientData : creates
+DataSourceAdapter "1" --> "1" DataStorage : stores
+DataSourceAdapter "1" --> "0..*" ParsedPatientData : forwards
+
+@enduml

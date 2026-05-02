@@ -1,0 +1,91 @@
+@startuml AlertGenerationSystem
+!pragma layout smetana
+title Alert Generation System
+skinparam classAttributeIconSize 0
+
+class AlertGenerator {
+  -dataStorage: DataStorage
+  -thresholdRepository: ThresholdRepository
+  -alertManager: AlertManager
+  -patientIdentifier: PatientIdentifier
+  +evaluate(patientData: PatientData): List<Alert>
+  +evaluateRecent(patientId: String): List<Alert>
+}
+
+class Alert {
+  -alertId: String
+  -patientId: String
+  -condition: String
+  -timestamp: long
+  -severity: String
+  +getPatientId(): String
+  +getCondition(): String
+  +getTimestamp(): long
+}
+
+class AlertManager {
+  -staffDirectory: List<MedicalStaff>
+  +dispatch(alert: Alert): void
+  +assignStaff(alert: Alert): MedicalStaff
+}
+
+class AlertRule {
+  -measurementType: String
+  -operator: String
+  -thresholdValue: double
+  +isTriggered(data: PatientData): boolean
+  +describeCondition(): String
+}
+
+class PatientThresholdProfile {
+  -patientId: String
+  -rules: List<AlertRule>
+  +addRule(rule: AlertRule): void
+  +getRules(): List<AlertRule>
+}
+
+class ThresholdRepository {
+  -profiles: Map<String, PatientThresholdProfile>
+  +getProfile(patientId: String): PatientThresholdProfile
+  +saveProfile(profile: PatientThresholdProfile): void
+}
+
+class PatientData {
+  -patientId: String
+  -measurementType: String
+  -value: double
+  -timestamp: long
+  +getPatientId(): String
+  +getValue(): double
+}
+
+class DataStorage {
+  +store(data: PatientData): void
+  +getRecentData(patientId: String): List<PatientData>
+}
+
+class PatientIdentifier {
+  +exists(patientId: String): boolean
+  +resolveHospitalId(patientId: String): String
+}
+
+class MedicalStaff {
+  -staffId: String
+  -role: String
+  -contactEndpoint: String
+  +receiveAlert(alert: Alert): void
+}
+
+PatientThresholdProfile "1" *-- "1..*" AlertRule : defines
+ThresholdRepository "1" o-- "0..*" PatientThresholdProfile : manages
+DataStorage "1" o-- "0..*" PatientData : stores
+AlertGenerator "1" --> "1" DataStorage : reads
+AlertGenerator "1" --> "1" ThresholdRepository : loads
+AlertGenerator "1" --> "1" PatientIdentifier : validates
+AlertGenerator "1" --> "1" AlertManager : sends alerts
+AlertGenerator "1" ..> "1..*" AlertRule : evaluates
+Alert "1" --> "1" PatientData : triggered by
+AlertManager "1" --> "0..*" Alert : dispatches
+AlertManager "1" o-- "1..*" MedicalStaff : routes to
+
+@enduml
