@@ -2,42 +2,26 @@ package com.alerts;
 
 /**
  * Represents one alert generated for a patient.
- * An alert records the patient identifier, the condition that was detected, and
- * the time of the triggering measurement.
+ * Implementations record the patient identifier, the condition that was
+ * detected, and the time of the triggering measurement.
  */
-public class Alert {
-    private final String patientId;
-    private final String condition;
-    private final long timestamp;
+public interface Alert {
 
-    /**
-     * Creates an alert with patient, condition, and timestamp details.
-     *
-     * @param patientId identifier of the patient related to this alert
-     * @param condition human-readable condition that triggered the alert
-     * @param timestamp time of the triggering measurement in milliseconds since epoch
-     */
-    public Alert(String patientId, String condition, long timestamp) {
-        this.patientId = patientId;
-        this.condition = condition;
-        this.timestamp = timestamp;
+    String getPatientId();
+
+    String getCondition();
+
+    long getTimestamp();
+
+    default AlertPriority getPriority() {
+        return AlertPriority.NORMAL;
     }
 
-    public String getPatientId() {
-        return patientId;
+    default boolean isRepeated() {
+        return false;
     }
 
-    public String getCondition() {
-        return condition;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    @Override
-    public String toString() {
-        return "Alert{patientId='" + patientId + "', condition='" + condition
-                + "', timestamp=" + timestamp + "}";
+    default long getRepeatIntervalMillis() {
+        return 0L;
     }
 }

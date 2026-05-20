@@ -147,7 +147,8 @@ class AlertGeneratorTest {
 
     @Test
     void testEvaluateAllPatientsUsesConfiguredDataStorage() {
-        DataStorage storage = new DataStorage();
+        DataStorage storage = DataStorage.getInstance();
+        storage.clear();
         storage.addPatientData(1, 91.0, "Saturation", 1000L);
 
         AlertGenerator generator = new AlertGenerator(storage);

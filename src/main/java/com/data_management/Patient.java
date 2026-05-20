@@ -35,18 +35,23 @@ public class Patient {
 
     /**
      * Adds a new record to this patient's list of medical records.
-     * The record is created with the specified measurement value, record type, and
-     * timestamp.
+     * Exact duplicates are ignored so a repeated real-time message does not create
+     * duplicate patient history entries.
      *
      * @param measurementValue the measurement value to store in the record
      * @param recordType       the type of record, e.g., "HeartRate",
      *                         "BloodPressure"
      * @param timestamp        the time at which the measurement was taken, in
      *                         milliseconds since UNIX epoch
+     * @return {@code true} if a new record was stored, otherwise {@code false}
      */
-    public void addRecord(double measurementValue, String recordType, long timestamp) {
+    public synchronized boolean addRecord(double measurementValue, String recordType, long timestamp) {
+        if (containsRecord(measurementValue, recordType, timestamp)) {
+            return false;
+        }
         PatientRecord record = new PatientRecord(this.patientId, measurementValue, recordType, timestamp);
         this.patientRecords.add(record);
+        return true;
     }
 
     /**
@@ -60,7 +65,7 @@ public class Patient {
      * @return a list of PatientRecord objects that fall within the specified time
      *         range
      */
-    public List<PatientRecord> getRecords(long startTime, long endTime) {
+    public synchronized List<PatientRecord> getRecords(long startTime, long endTime) {
         List<PatientRecord> matchingRecords = new ArrayList<>();
         if (startTime > endTime) {
             return matchingRecords;
@@ -74,5 +79,17 @@ public class Patient {
         }
 
         return matchingRecords;
+    }
+
+    private boolean containsRecord(double measurementValue, String recordType, long timestamp) {
+        for (PatientRecord patientRecord : patientRecords) {
+            boolean sameTimestamp = patientRecord.getTimestamp() == timestamp;
+            boolean sameType = patientRecord.getRecordType().equals(recordType);
+            boolean sameValue = Double.compare(patientRecord.getMeasurementValue(), measurementValue) == 0;
+            if (sameTimestamp && sameType && sameValue) {
+                return true;
+            }
+        }
+        return false;
     }
 }

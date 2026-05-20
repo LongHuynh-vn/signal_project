@@ -30,7 +30,8 @@ class FileDataReaderTest {
                 "not a simulator line",
                 "Patient ID: abc, Timestamp: 5000, Label: ECG, Data: 0.1"));
 
-        DataStorage storage = new DataStorage();
+        DataStorage storage = DataStorage.getInstance();
+        storage.clear();
         FileDataReader reader = new FileDataReader(tempDirectory);
 
         reader.readData(storage);

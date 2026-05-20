@@ -33,10 +33,26 @@ import java.util.ArrayList;
  */
 public class HealthDataSimulator {
 
-    private static int patientCount = 50; // Default number of patients
-    private static ScheduledExecutorService scheduler;
-    private static OutputStrategy outputStrategy = new ConsoleOutputStrategy(); // Default output strategy
-    private static final Random random = new Random();
+    private static final int DEFAULT_PATIENT_COUNT = 50;
+    private static final HealthDataSimulator INSTANCE = new HealthDataSimulator();
+
+    private final Random random = new Random();
+    private int patientCount; // Default number of patients
+    private ScheduledExecutorService scheduler;
+    private OutputStrategy outputStrategy; // Default output strategy
+
+    private HealthDataSimulator() {
+        resetConfiguration();
+    }
+
+    /**
+     * Returns the single shared simulator instance.
+     *
+     * @return singleton HealthDataSimulator instance
+     */
+    public static HealthDataSimulator getInstance() {
+        return INSTANCE;
+    }
 
     /**
      * Starts the simulator and schedules all recurring patient-data generation
@@ -49,6 +65,23 @@ public class HealthDataSimulator {
      *                     parsing the selected output strategy
      */
     public static void main(String[] args) throws IOException {
+        getInstance().start(args);
+    }
+
+    /**
+     * Starts the singleton simulator instance.
+     *
+     * @param args command-line options such as {@code -h},
+     *             {@code --patient-count <count>}, and
+     *             {@code --output <console|file:dir|websocket:port|tcp:port>}
+     * @throws IOException if a file output directory cannot be created while
+     *                     parsing the selected output strategy
+     */
+    public void start(String[] args) throws IOException {
+        resetConfiguration();
+        if (scheduler != null && !scheduler.isShutdown()) {
+            scheduler.shutdownNow();
+        }
 
         parseArguments(args);
 
@@ -61,13 +94,21 @@ public class HealthDataSimulator {
     }
 
     /**
+     * Restores default simulator configuration before a new run starts.
+     */
+    private void resetConfiguration() {
+        patientCount = DEFAULT_PATIENT_COUNT;
+        outputStrategy = new ConsoleOutputStrategy();
+    }
+
+    /**
      * Parses command-line arguments and updates the simulator configuration.
      *
      * @param args command-line options passed to the simulator
      * @throws IOException if file output is selected and its directory cannot be
      *                     created
      */
-    private static void parseArguments(String[] args) throws IOException {
+    private void parseArguments(String[] args) throws IOException {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "-h":
@@ -131,7 +172,7 @@ public class HealthDataSimulator {
     /**
      * Prints a short usage summary describing the supported simulator options.
      */
-    private static void printHelp() {
+    private void printHelp() {
         System.out.println("Usage: java HealthDataSimulator [options]");
         System.out.println("Options:");
         System.out.println("  -h                       Show help and exit.");
@@ -156,7 +197,7 @@ public class HealthDataSimulator {
      * @return a list containing sequential patient IDs from 1 to
      *         {@code patientCount}
      */
-    private static List<Integer> initializePatientIds(int patientCount) {
+    private List<Integer> initializePatientIds(int patientCount) {
         List<Integer> patientIds = new ArrayList<>();
         for (int i = 1; i <= patientCount; i++) {
             patientIds.add(i);
@@ -169,7 +210,7 @@ public class HealthDataSimulator {
      *
      * @param patientIds identifiers for the patients whose data should be simulated
      */
-    private static void scheduleTasksForPatients(List<Integer> patientIds) {
+    private void scheduleTasksForPatients(List<Integer> patientIds) {
         ECGDataGenerator ecgDataGenerator = new ECGDataGenerator(patientCount);
         BloodSaturationDataGenerator bloodSaturationDataGenerator = new BloodSaturationDataGenerator(patientCount);
         BloodPressureDataGenerator bloodPressureDataGenerator = new BloodPressureDataGenerator(patientCount);
@@ -192,7 +233,7 @@ public class HealthDataSimulator {
      * @param period fixed interval between consecutive executions
      * @param timeUnit unit used to interpret {@code period}
      */
-    private static void scheduleTask(Runnable task, long period, TimeUnit timeUnit) {
+    private void scheduleTask(Runnable task, long period, TimeUnit timeUnit) {
         scheduler.scheduleAtFixedRate(task, random.nextInt(5), period, timeUnit);
     }
 }

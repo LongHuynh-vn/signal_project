@@ -1,10 +1,12 @@
 package com.data_management;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import com.alerts.Alert;
 import com.alerts.AlertGenerator;
@@ -16,14 +18,31 @@ import com.alerts.AlertGenerator;
  * patient IDs.
  */
 public class DataStorage {
-    private Map<Integer, Patient> patientMap; // Stores patient objects indexed by their unique patient ID.
+    private static final DataStorage INSTANCE = new DataStorage();
+
+    private final Map<Integer, Patient> patientMap; // Stores patient objects indexed by their unique patient ID.
 
     /**
-     * Constructs a new instance of DataStorage, initializing the underlying storage
-     * structure.
+     * Constructs the singleton instance of DataStorage.
      */
-    public DataStorage() {
-        this.patientMap = new HashMap<>();
+    private DataStorage() {
+        this.patientMap = new ConcurrentHashMap<>();
+    }
+
+    /**
+     * Returns the single shared DataStorage instance.
+     *
+     * @return singleton DataStorage instance
+     */
+    public static DataStorage getInstance() {
+        return INSTANCE;
+    }
+
+    /**
+     * Removes all stored patients and records.
+     */
+    public void clear() {
+        patientMap.clear();
     }
 
     /**
@@ -40,11 +59,7 @@ public class DataStorage {
      *                         milliseconds since the Unix epoch
      */
     public void addPatientData(int patientId, double measurementValue, String recordType, long timestamp) {
-        Patient patient = patientMap.get(patientId);
-        if (patient == null) {
-            patient = new Patient(patientId);
-            patientMap.put(patientId, patient);
-        }
+        Patient patient = patientMap.computeIfAbsent(patientId, Patient::new);
         patient.addRecord(measurementValue, recordType, timestamp);
     }
 
@@ -86,15 +101,33 @@ public class DataStorage {
      * @param args command line arguments
      */
     public static void main(String[] args) {
-        DataStorage storage = new DataStorage();
+        DataStorage storage = DataStorage.getInstance();
+        storage.clear();
 
         if (args.length > 0) {
+            DataReader reader = null;
             try {
-                DataReader reader = new FileDataReader(args[0]);
+                reader = createReader(args[0]);
                 reader.readData(storage);
+                if (reader instanceof WebSocketClient) {
+                    System.out.println("Streaming WebSocket data. Stop the server or interrupt this process to exit.");
+                    ((WebSocketClient) reader).waitUntilClosed();
+                }
             } catch (IOException exception) {
                 System.err.println("Unable to read patient data: " + exception.getMessage());
                 return;
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                System.err.println("Interrupted while waiting for WebSocket data.");
+                return;
+            } finally {
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException exception) {
+                        System.err.println("Unable to close data reader: " + exception.getMessage());
+                    }
+                }
             }
         } else {
             System.out.println("No data directory provided. Running with empty storage.");
@@ -117,5 +150,25 @@ public class DataStorage {
         for (Alert alert : alertGenerator.getAlerts()) {
             System.out.println(alert);
         }
+    }
+
+    private static DataReader createReader(String source) throws IOException {
+        if (source.startsWith("websocket:")) {
+            String portText = source.substring("websocket:".length());
+            try {
+                int port = Integer.parseInt(portText);
+                return new WebSocketClient(new URI("ws://localhost:" + port));
+            } catch (NumberFormatException | URISyntaxException exception) {
+                throw new IOException("Invalid WebSocket source: " + source, exception);
+            }
+        }
+        if (source.startsWith("ws://") || source.startsWith("wss://")) {
+            try {
+                return new WebSocketClient(new URI(source));
+            } catch (URISyntaxException exception) {
+                throw new IOException("Invalid WebSocket URI: " + source, exception);
+            }
+        }
+        return new FileDataReader(source);
     }
 }

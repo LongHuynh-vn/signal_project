@@ -7,7 +7,7 @@ import java.net.InetSocketAddress;
 
 public class WebSocketOutputStrategy implements OutputStrategy {
 
-    private WebSocketServer server;
+    private final WebSocketServer server;
 
     public WebSocketOutputStrategy(int port) {
         server = new SimpleWebSocketServer(new InetSocketAddress(port));
@@ -17,11 +17,19 @@ public class WebSocketOutputStrategy implements OutputStrategy {
 
     @Override
     public void output(int patientId, long timestamp, String label, String data) {
-        String message = String.format("%d,%d,%s,%s", patientId, timestamp, label, data);
-        // Broadcast the message to all connected clients
+        String message = formatMessage(patientId, timestamp, label, data);
         for (WebSocket conn : server.getConnections()) {
-            conn.send(message);
+            try {
+                conn.send(message);
+            } catch (RuntimeException exception) {
+                System.err.println("Unable to send WebSocket message to "
+                        + conn.getRemoteSocketAddress() + ": " + exception.getMessage());
+            }
         }
+    }
+
+    static String formatMessage(int patientId, long timestamp, String label, String data) {
+        return String.format("%d,%d,%s,%s", patientId, timestamp, label, data);
     }
 
     private static class SimpleWebSocketServer extends WebSocketServer {
